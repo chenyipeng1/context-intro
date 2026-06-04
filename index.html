@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plaud Context & Memory｜一份给非技术同事的介绍</title>
+<style>
+  :root{
+    --bg:#f6f7f5;
+    --paper:#ffffff;
+    --ink:#1f2933;
+    --ink-soft:#52606d;
+    --ink-faint:#7b8794;
+    --green:#0e9f6e;
+    --green-deep:#067a52;
+    --green-wash:#e7f6ef;
+    --blue:#2563d9;
+    --blue-wash:#e8eefc;
+    --amber:#b9770e;
+    --amber-wash:#fbf2e0;
+    --purple:#7c3aed;
+    --purple-wash:#f0ebff;
+    --line:#e3e6e2;
+    --radius:16px;
+    --shadow:0 1px 2px rgba(31,41,51,.05),0 8px 24px rgba(31,41,51,.06);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:0 22px 96px;}
+
+  .hero{padding:64px 0 40px;}
+  .eyebrow{display:inline-block;font-size:13px;letter-spacing:.14em;color:var(--green-deep);
+    background:var(--green-wash);padding:5px 12px;border-radius:999px;font-weight:600;margin-bottom:20px;}
+  h1{font-size:38px;line-height:1.25;margin:0 0 16px;letter-spacing:-.01em;font-weight:750;}
+  h1 .accent{color:var(--green);}
+  h1 .accent2{color:var(--purple);}
+  .lede{font-size:18px;color:var(--ink-soft);max-width:690px;margin:0;}
+  .meta{margin-top:24px;font-size:13.5px;color:var(--ink-faint);display:flex;gap:18px;flex-wrap:wrap;}
+  .meta span{display:inline-flex;align-items:center;gap:6px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+
+  nav.toc{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 22px;margin:8px 0 44px;box-shadow:var(--shadow);}
+  nav.toc .toc-title{font-size:12.5px;letter-spacing:.1em;color:var(--ink-faint);font-weight:600;margin-bottom:10px;}
+  nav.toc ol{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;counter-reset:t;}
+  nav.toc a{counter-increment:t;text-decoration:none;color:var(--ink-soft);font-size:14.5px;
+    display:flex;gap:10px;padding:5px 0;border-radius:8px;transition:color .15s;}
+  nav.toc a::before{content:counter(t,decimal-leading-zero);color:var(--green);font-weight:700;font-variant-numeric:tabular-nums;}
+  nav.toc a:hover{color:var(--green-deep);}
+
+  section{margin:0 0 56px;scroll-margin-top:24px;}
+  h2{font-size:25px;margin:0 0 6px;letter-spacing:-.01em;font-weight:720;display:flex;align-items:baseline;gap:12px;}
+  h2 .num{font-size:14px;color:var(--green);font-weight:700;font-variant-numeric:tabular-nums;flex:none;}
+  .sub{color:var(--ink-faint);font-size:14.5px;margin:0 0 22px;padding-left:30px;}
+  h3{font-size:18px;margin:30px 0 8px;font-weight:680;}
+  p{margin:0 0 16px;}
+  strong{font-weight:680;color:var(--ink);}
+  .pad{padding-left:30px;}
+  @media(max-width:640px){.pad{padding-left:0;} .sub{padding-left:0;} nav.toc ol{grid-template-columns:1fr;}}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+    padding:26px 28px;box-shadow:var(--shadow);margin-bottom:18px;}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 0;}
+  .triple{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0;}
+  @media(max-width:720px){.duo{grid-template-columns:1fr;} .triple{grid-template-columns:1fr;}}
+  .duo .card,.triple .card{margin:0;}
+  .tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;padding:4px 10px;border-radius:999px;margin-bottom:14px;}
+  .tag.ctx{background:var(--green-wash);color:var(--green-deep);}
+  .tag.mem{background:var(--purple-wash);color:var(--purple);}
+  .tag.ret{background:var(--blue-wash);color:var(--blue);}
+  .card h3{margin-top:0;}
+  .card .oneline{font-size:15px;color:var(--ink-soft);margin-bottom:0;}
+  .card ul{margin:14px 0 0;padding-left:18px;}
+  .card li{margin-bottom:7px;color:var(--ink-soft);font-size:14.5px;}
+  .card li strong{color:var(--ink);}
+
+  .analogy{background:linear-gradient(180deg,#fffdf7,#fbf6ea);border:1px solid #f0e4c8;
+    border-radius:14px;padding:18px 20px;margin:18px 0;display:flex;gap:14px;align-items:flex-start;}
+  .analogy .ico{flex:none;width:34px;height:34px;border-radius:9px;background:var(--amber-wash);
+    display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .analogy .body{font-size:14.5px;color:#6a5414;}
+  .analogy .body b{color:var(--amber);}
+
+  .flowline{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:20px 0 24px;}
+  .flowline .fl{background:var(--paper);border:1px solid var(--line);border-radius:11px;
+    padding:9px 13px;font-size:13.5px;display:flex;align-items:center;gap:7px;box-shadow:var(--shadow);white-space:nowrap;}
+  .flowline .fl.brain{border-color:var(--green);background:var(--green-wash);color:var(--green-deep);font-weight:700;}
+  .flowline .fl.ctx{border-color:#bfe3d3;}
+  .flowline .fl.mem{border-color:#c4b5fd;background:var(--purple-wash);color:var(--purple);font-weight:600;}
+  .flowline .fl.done{border-color:#bfe3d3;background:#f1faf6;}
+  .flowline .arrow{color:var(--ink-faint);font-weight:700;font-size:15px;}
+  .step{display:flex;gap:16px;margin-bottom:16px;}
+  .step .n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--green);color:#fff;
+    font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:2px;}
+  .step .st-body{flex:1;}
+  .step h4{margin:2px 0 5px;font-size:16px;font-weight:680;}
+  .step p{margin:0;color:var(--ink-soft);font-size:14.5px;}
+
+  .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0 6px;}
+  @media(max-width:680px){.trio{grid-template-columns:1fr;}}
+  .trio .t{background:var(--paper);border:1px solid var(--line);border-top:3px solid var(--line);
+    border-radius:13px;padding:18px;box-shadow:var(--shadow);}
+  .trio .t.tctx{border-top-color:var(--green);}
+  .trio .t.tmem{border-top-color:var(--purple);}
+  .trio .t.tret{border-top-color:var(--blue);}
+  .trio .tico{font-size:24px;margin-bottom:8px;}
+  .trio .trole{font-size:12px;color:var(--ink-faint);font-weight:600;}
+  .trio .tname{font-size:17px;font-weight:720;margin:2px 0 6px;}
+  .trio .tdesc{font-size:13.5px;color:var(--ink-soft);}
+
+  .diagram{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+    padding:30px 26px;box-shadow:var(--shadow);margin:26px 0;}
+  .layer-stack{display:flex;flex-direction:column;gap:12px;}
+  .layer{border-radius:14px;padding:18px 20px;}
+  .layer-top{background:var(--blue-wash);border:2px solid var(--blue);border-style:dashed;}
+  .layer-mid{background:var(--purple-wash);border:2px solid var(--purple);border-style:dashed;}
+  .layer-bot{background:var(--green-wash);border:2px solid var(--green);border-style:dashed;}
+  .layer .l-label{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .layer-top .l-label{color:var(--blue);}
+  .layer-mid .l-label{color:var(--purple);}
+  .layer-bot .l-label{color:var(--green-deep);}
+  .l-label .chip{color:#fff;font-size:11px;padding:2px 8px;border-radius:6px;}
+  .layer-top .chip{background:var(--blue);}
+  .layer-mid .chip{background:var(--purple);}
+  .layer-bot .chip{background:var(--green);}
+  .l-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+  .l-pill{background:#fff;border-radius:10px;padding:10px 13px;border:1px solid rgba(0,0,0,.08);}
+  .l-pill .lp-top{font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:3px;}
+  .layer-top .lp-top{color:var(--blue);}
+  .layer-mid .lp-top{color:var(--purple);}
+  .layer-bot .lp-top{color:var(--green-deep);}
+  .l-pill .lp-name{font-size:13.5px;font-weight:600;}
+  .diagram .caption{font-size:13px;color:var(--ink-faint);margin-top:16px;text-align:center;}
+
+  .scenarios{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0;}
+  @media(max-width:680px){.scenarios{grid-template-columns:1fr;}}
+  .scene{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow);}
+  .scene .s-user{font-size:14px;color:var(--ink);margin-bottom:10px;padding:10px 14px;background:#f8f9f7;border-radius:10px;border-left:3px solid var(--green);}
+  .scene .s-agent{font-size:13.5px;color:var(--ink-soft);}
+  .scene .s-agent strong{color:var(--green-deep);}
+  .scene .s-label{font-size:12px;font-weight:700;color:var(--ink-faint);letter-spacing:.05em;margin-bottom:8px;}
+
+  .note{background:var(--green-wash);border:1px solid #c7ead9;border-radius:12px;padding:14px 18px;
+    font-size:14.5px;color:var(--green-deep);margin:0 0 22px;}
+  .cmp{width:100%;border-collapse:separate;border-spacing:0;font-size:14px;background:var(--paper);
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  .cmp th,.cmp td{padding:13px 16px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);}
+  .cmp thead th{background:#f0f2ef;font-size:12.5px;letter-spacing:.04em;color:var(--ink-soft);font-weight:700;}
+  .cmp thead th:nth-child(3){color:var(--green-deep);background:var(--green-wash);}
+  .cmp td:first-child{font-weight:680;color:var(--ink);width:118px;}
+  .cmp td:last-child{background:#fbfdfc;}
+  .cmp tbody tr:last-child td{border-bottom:none;}
+  .cmp .other{color:var(--ink-soft);}
+  @media(max-width:680px){
+    .cmp,.cmp tbody,.cmp tr,.cmp td{display:block;width:100%;}
+    .cmp thead{display:none;}
+    .cmp tr{border-bottom:1px solid var(--line);padding:8px 0;}
+    .cmp td{border:none;padding:6px 16px;}
+    .cmp td:first-child{padding-top:14px;font-size:15px;color:var(--green-deep);}
+    .cmp td:nth-child(2)::before{content:"行业通行：";font-weight:700;color:var(--ink-faint);}
+    .cmp td:nth-child(3)::before{content:"Plaud：";font-weight:700;color:var(--green-deep);}
+    .cmp td:last-child{background:transparent;}
+  }
+
+  .summary{background:linear-gradient(135deg,#0e9f6e,#067a52);color:#fff;border-radius:var(--radius);
+    padding:34px 32px;box-shadow:0 12px 30px rgba(6,122,82,.25);}
+  .summary h2{color:#fff;}
+  .summary h2 .num{color:#bdf0db;}
+  .summary p{color:#e6f7ef;margin:0 0 12px;}
+  .summary .big{font-size:18.5px;font-weight:600;color:#fff;margin-bottom:18px;}
+  .summary .pillz{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .summary .pz{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);
+    border-radius:999px;padding:6px 14px;font-size:13.5px;}
+
+  .gloss{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:680px){.gloss{grid-template-columns:1fr;}}
+  .gloss .g{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 18px;box-shadow:var(--shadow);}
+  .gloss .gt{font-weight:700;font-size:14.5px;margin-bottom:3px;}
+  .gloss .gd{font-size:13.5px;color:var(--ink-soft);}
+
+  .kv-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0;}
+  @media(max-width:680px){.kv-row{grid-template-columns:1fr 1fr;}}
+  .kv{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:18px 16px;text-align:center;box-shadow:var(--shadow);}
+  .kv .kv-num{font-size:28px;font-weight:750;color:var(--green);line-height:1.2;}
+  .kv .kv-label{font-size:13px;color:var(--ink-faint);margin-top:4px;}
+
+  .trigger{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0;}
+  @media(max-width:680px){.trigger{grid-template-columns:1fr;}}
+  .trig{border:1px solid var(--line);border-radius:13px;padding:18px 20px;background:var(--paper);box-shadow:var(--shadow);}
+  .trig .th{font-weight:680;font-size:15px;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+  .trig p{margin:0;font-size:14px;color:var(--ink-soft);}
+  .trig ul{margin:8px 0 0;padding-left:18px;}
+  .trig li{margin-bottom:4px;font-size:13.5px;color:var(--ink-soft);}
+  .trig li strong{color:var(--ink);}
+
+  footer{border-top:1px solid var(--line);margin-top:20px;padding-top:24px;font-size:13px;color:var(--ink-faint);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">PLAUD 4.0 · 产品科普</span>
+    <h1>认识 <span class="accent">Context</span> 和 <span class="accent2">Memory</span></h1>
+    <p class="lede">一份写给非技术同事的说明：不谈代码，只把"Context 和 Memory 各是什么、为什么重要、在 Plaud 里怎么用、和竞品有何不同"讲清楚。读完这一页，你就能对外把这件事说明白。</p>
+    <div class="meta">
+      <span><i class="dot"></i>阅读对象：公司内部非技术同事</span>
+      <span><i class="dot"></i>约 10 分钟</span>
+      <span><i class="dot"></i>v1 · 2026-06</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <div class="toc-title">目录</div>
+    <ol>
+      <a href="#why">为什么需要 Context & Memory</a>
+      <a href="#what">一句话分清三个概念</a>
+      <a href="#context">什么是 Context（上下文）</a>
+      <a href="#memory">什么是 Memory（记忆）</a>
+      <a href="#layers">三层架构：存、记、找</a>
+      <a href="#how">Agent 怎么用它们干活</a>
+      <a href="#user">用户看到什么、能做什么</a>
+      <a href="#diff">和竞品有何不同</a>
+      <a href="#summary">一句话记住</a>
+      <a href="#gloss">名词小词典</a>
+    </ol>
+  </nav>
+
+  <!-- 01 -->
+  <section id="why">
+    <h2><span class="num">01</span>为什么需要 Context & Memory</h2>
+    <p class="sub">从"每次对话都从零开始"，到"越用越懂你"</p>
+    <div class="pad">
+      <p>想象你有一个助理，每次开口前都会把之前的事全忘了——每次你都得重新介绍自己是谁、在做什么项目、上次讨论到哪了。累不累？</p>
+      <p>这就是现在绝大多数 AI 的状态。它们很聪明，但<strong>没有长期记忆</strong>，每一次对话都是一张白纸。而 Plaud 做的事不一样：用户每录一次音、每开一次会，这些内容就在 Plaud 里持续积累。问题是——<strong>积累下来的这些内容，怎么才能被 AI 真正用起来？</strong></p>
+
+      <div class="analogy">
+        <div class="ico">🧠</div>
+        <div class="body">这就是 Context & Memory 要解决的事。<b>Context</b> 是"AI 能调取的全部信息"——你在 Plaud 上积累的一切。<b>Memory</b> 是"从中提炼出的核心记忆"——不用翻万字转写，直接拿到最有用的事实。两者合一，让 Agent 真正拥有<b>"用过去的积累帮你做当下的事"</b>的能力。</div>
+      </div>
+
+      <p>Sam Altman 说过一句话：<strong>"Memory 是大模型产品的护城河。"</strong> 有记忆的 AI 和没记忆的 AI，用起来完全是两个东西。而 Plaud 的独特优势在于——<strong>我们的记忆来源不是聊天记录，而是用户真实工作中的录音</strong>。这是别人拿不走的第一手数据。</p>
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section id="what">
+    <h2><span class="num">02</span>一句话分清三个概念</h2>
+    <p class="sub">Context、Memory、Retrieval——各管什么</p>
+    <div class="pad">
+      <p>Context & Memory 内部实际上有三个角色。别急着记，先看这张图：</p>
+
+      <div class="trio">
+        <div class="t tctx"><div class="tico">🗄️</div><div class="trole">数据底座</div><div class="tname">Context Storage</div><div class="tdesc">存放用户在 Plaud 上积累的全部内容——录音转写、AI Summary、Highlight、上传文件、Agent 产出物。什么都不丢。</div></div>
+        <div class="t tmem"><div class="tico">💎</div><div class="trole">核心记忆</div><div class="tname">Memory</div><div class="tdesc">从 Context 中提炼出的结构化事实——谁承诺了什么、做了什么决定、关键数据点。不是缩写，是筛选。再加上"你是谁"和"你要我怎么做"的个人画像。</div></div>
+        <div class="t tret"><div class="tico">🔍</div><div class="trole">检索能力</div><div class="tname">Retrieval</div><div class="tdesc">Agent 需要信息时的"搜索引擎"。先从 Memory 中定位相关内容，再按需从 Context 拿全文。Agent 所有的信息都经这一层获取。</div></div>
+      </div>
+
+      <div class="analogy">
+        <div class="ico">📚</div>
+        <div class="body">打个比方：<b>Context 是图书馆的全部馆藏</b>（什么都有，但翻起来慢）；<b>Memory 是从每本书中画出来的重点卡片</b>（精炼且分好类）；<b>Retrieval 是图书管理员</b>（你说一句话，她就能帮你找到相关的卡片和原书）。Agent 不需要自己翻书——它问管理员就行。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section id="context">
+    <h2><span class="num">03</span>什么是 Context（上下文）</h2>
+    <p class="sub">AI 的全部"知识库"——在 Plaud 上积累的一切，它都能调取</p>
+    <div class="pad">
+      <p><strong>Context 就是 Agent 能看到的全部背景信息。</strong>在 Plaud 4.0 中，它以文件系统（File System）的形态组织，让用户和 Agent 都能按"时间"、"事项"、"人物"三个维度浏览和检索。</p>
+
+      <h3>Context 里装了什么</h3>
+      <div class="duo">
+        <div class="card">
+          <span class="tag ctx">CONTEXT · 原始采集</span>
+          <h3>录音 & 转写</h3>
+          <div class="oneline">用户的每一段录音和完整转写文本，带时间戳和说话人标注。这是最原始、最完整的"事实底座"——后续所有 AI 产出都以它为起点。</div>
+        </div>
+        <div class="card">
+          <span class="tag ctx">CONTEXT · AI 产出</span>
+          <h3>Summary & Highlight</h3>
+          <div class="oneline">AI 自动生成的标准化摘要（Summary 0）和重点标注（Highlight）。4.0 的 Summary 定位是"对录音内容的忠实还原"，强调事实准确而非花哨改写。</div>
+        </div>
+        <div class="card">
+          <span class="tag ctx">CONTEXT · 用户导入</span>
+          <h3>文件 & 文档</h3>
+          <div class="oneline">用户主动上传的文档、从其他工具导入的资料。不限于音频——PDF、PPT、图片，任何你想让 AI 知道的东西。</div>
+        </div>
+        <div class="card">
+          <span class="tag ctx">CONTEXT · Agent 产出</span>
+          <h3>Artifact</h3>
+          <div class="oneline">Agent 在对话中生成的产出物（邮件草稿、分析报告、方案文档等），会被回存到 Context 中，下次对话时可以继续引用。</div>
+        </div>
+      </div>
+
+      <div class="analogy">
+        <div class="ico">🗂️</div>
+        <div class="body">简单说，Context 回答的是：<b>"AI 能调取哪些信息？"</b> 答案是——你在 Plaud 上积累的一切。录音、摘要、文件、Agent 的产出，全都在里面。<b>用户录得越多，AI 能力就越强。</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section id="memory">
+    <h2><span class="num">04</span>什么是 Memory（记忆）</h2>
+    <p class="sub">从万字录音中提炼核心事实 + 认识"你是谁"</p>
+    <div class="pad">
+      <p>一场 60 分钟的会议，转写出来可能上万字。但真正重要的信息可能就几百字——谁承诺了什么、做了什么决定、有哪些关键数据。<strong>Memory 就是做这件事的。</strong></p>
+      <p>Memory 在 Plaud 中有两个组成部分：</p>
+
+      <div class="trigger">
+        <div class="trig">
+          <div class="th">💎 Info Extraction（信息提取）</div>
+          <p>从录音转写中自动提取结构化事实。目前探索中的分类方向包括（非最终标准，仅供参考）：</p>
+          <ul>
+            <li><strong>行动承诺</strong>——谁答应了做什么</li>
+            <li><strong>决策共识</strong>——会上定了什么结论</li>
+            <li><strong>分歧未决</strong>——哪些事还没谈拢</li>
+            <li><strong>关键数据</strong>——数字、指标、日期</li>
+            <li><strong>背景状态</strong>——项目进展、人员关系</li>
+            <li><strong>观点表达</strong>——谁对什么事持什么看法</li>
+            <li>……以及更多</li>
+          </ul>
+        </div>
+        <div class="trig">
+          <div class="th">👤 Personalization（个性化）</div>
+          <p>让 AI 认识你、按你的方式工作。4.0 中对应两个用户可见的入口：</p>
+          <ul>
+            <li><strong>About You</strong>——你的职业、行业、工作关注点。告诉 AI"我是谁"</li>
+            <li><strong>About Agent</strong>——你希望 AI 怎么帮你（比如"会议纪要重点写行动项"、"用英文回复"）。告诉 AI"你该怎么做"</li>
+          </ul>
+          <p style="margin-top:10px;">Agent 处理每一个请求时，都会参考这两份设定——<strong>所以不同用户拿到的结果是不同的，即使问同一个问题。</strong></p>
+        </div>
+      </div>
+
+      <div class="analogy">
+        <div class="ico">🔑</div>
+        <div class="body"><b>核心原则：事实压缩，而非摘要改写。</b>Memory 只保留原文中明确说过的事实，不做推测、不做延伸。会上说了"deadline 是 7 月 7 号"就记这个；只是隐约提了"七月上旬"，不会自作聪明地精确到某一天。宁可多提取，也不能提错——因为错误的记忆比没有记忆更危险。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section id="layers">
+    <h2><span class="num">05</span>三层架构：存、记、找</h2>
+    <p class="sub">从底向上——原始存储 → 信息压缩 → 智能检索</p>
+    <div class="pad">
+      <p>在内部架构上，Context & Memory 组成一个<strong>三层系统</strong>，每一层解决一个问题。这也是 Context OS Pod 的三大模块。</p>
+
+      <div class="diagram">
+        <div class="layer-stack">
+
+          <div class="layer layer-top">
+            <div class="l-label"><span class="chip">RETRIEVAL</span>检索层——Agent 怎么找到需要的信息</div>
+            <div class="l-items">
+              <div class="l-pill"><div class="lp-top">SEARCH</div><div class="lp-name">Context 搜索</div></div>
+              <div class="l-pill"><div class="lp-top">SCOPE</div><div class="lp-name">Folder 范围限定</div></div>
+              <div class="l-pill"><div class="lp-top">LOAD</div><div class="lp-name">按需加载全文</div></div>
+              <div class="l-pill"><div class="lp-top">IE</div><div class="lp-name">Memory 增强召回</div></div>
+            </div>
+          </div>
+
+          <div style="text-align:center;font-size:13px;color:var(--ink-faint);">▲ Agent 通过 Retrieval 获取信息，不直接访问底层 ▲</div>
+
+          <div class="layer layer-mid">
+            <div class="l-label"><span class="chip">MEMORY</span>压缩层——提炼事实 + 认识用户</div>
+            <div class="l-items">
+              <div class="l-pill"><div class="lp-top">EXTRACT</div><div class="lp-name">Info Extraction</div></div>
+              <div class="l-pill"><div class="lp-top">PROFILE</div><div class="lp-name">About You</div></div>
+              <div class="l-pill"><div class="lp-top">PREF</div><div class="lp-name">About Agent</div></div>
+              <div class="l-pill"><div class="lp-top">DAILY</div><div class="lp-name">Daily Memory</div></div>
+            </div>
+          </div>
+
+          <div style="text-align:center;font-size:13px;color:var(--ink-faint);">▲ Memory 从 Storage 中提炼结构化事实 ▲</div>
+
+          <div class="layer layer-bot">
+            <div class="l-label"><span class="chip">STORAGE</span>存储层——一切原始和加工内容</div>
+            <div class="l-items">
+              <div class="l-pill"><div class="lp-top">RAW</div><div class="lp-name">录音 & 转写</div></div>
+              <div class="l-pill"><div class="lp-top">GEN</div><div class="lp-name">Summary</div></div>
+              <div class="l-pill"><div class="lp-top">GEN</div><div class="lp-name">Highlight</div></div>
+              <div class="l-pill"><div class="lp-top">USER</div><div class="lp-name">用户文件</div></div>
+              <div class="l-pill"><div class="lp-top">AGENT</div><div class="lp-name">Artifact</div></div>
+            </div>
+          </div>
+
+        </div>
+        <div class="caption">Context OS 三层架构。Storage 存全量数据，Memory 做信息压缩和用户画像，Retrieval 向 Agent 暴露统一检索能力。<br>Agent 的一切信息获取都走 Retrieval 层，不会直接翻底层数据。</div>
+      </div>
+
+      <h3>为什么非得分三层？</h3>
+      <p>因为 Agent 的"注意力"是有限的——它不可能一次性看完用户所有的录音转写（可能有几百万字）。分层的意义在于：</p>
+      <div class="step"><div class="n">1</div><div class="st-body"><h4>Storage 保证"不丢"</h4><p>所有原始内容和 AI 产出完整保存，用户随时能回溯到任何一段录音的原文。</p></div></div>
+      <div class="step"><div class="n">2</div><div class="st-body"><h4>Memory 保证"精"</h4><p>从万字原文中提炼出高密度事实，让 Agent 能快速判断"哪些录音和这个问题相关"。</p></div></div>
+      <div class="step"><div class="n">3</div><div class="st-body"><h4>Retrieval 保证"快"</h4><p>先用 Memory 缩小范围，再按需从 Storage 拿全文。Agent 既不遗漏，也不被淹没。</p></div></div>
+    </div>
+  </section>
+
+  <!-- 06 -->
+  <section id="how">
+    <h2><span class="num">06</span>Agent 怎么用它们干活</h2>
+    <p class="sub">一个真实的例子——从用户提问到准确回答的全过程</p>
+    <div class="pad">
+
+      <div class="analogy">
+        <div class="ico">🗣️</div>
+        <div class="body">用户在 Plaud Ask 里问：<b>"上周和客户的会上，他们对定价有什么反馈？"</b></div>
+      </div>
+
+      <div class="flowline">
+        <div class="fl">🗣️ 用户提问</div>
+        <div class="arrow">→</div>
+        <div class="fl brain">🧠 Agent 理解意图</div>
+        <div class="arrow">→</div>
+        <div class="fl mem">💎 Memory 定位</div>
+        <div class="arrow">→</div>
+        <div class="fl ctx">🗄️ Context 取全文</div>
+        <div class="arrow">→</div>
+        <div class="fl done">✅ 有据可依的回答</div>
+      </div>
+
+      <div class="step"><div class="n">1</div><div class="st-body"><h4>Agent 理解你要什么</h4><p>关键信息是"上周"、"客户会议"、"定价"、"反馈"。Agent 通过 Retrieval 发起搜索。</p></div></div>
+      <div class="step"><div class="n">2</div><div class="st-body"><h4>Retrieval 调 Memory 定位</h4><p>Memory 中有结构化的事实记录。搜索到：上周三的客户会议中，有 3 条和"定价"相关的事实——一条客户反对意见、一条协商让步、一条最终共识。快速锁定了相关录音。</p></div></div>
+      <div class="step"><div class="n">3</div><div class="st-body"><h4>按需从 Context 取全文</h4><p>如果 Memory 的精华不够回答（比如用户想听原话），Retrieval 进一步从 Storage 中加载那段录音对应的转写全文，拿到上下文细节。</p></div></div>
+      <div class="step"><div class="n">4</div><div class="st-body"><h4>组织有据可依的回答</h4><p>Agent 基于定位到的事实和原文，给出一个有来源可追溯的回答，而不是凭空编造。"根据 5 月 28 日与 Acme 的会议记录，客户 VP 提出……"</p></div></div>
+
+      <p>这就是三层配合的核心价值：<strong>Memory 帮 Agent "快速找到在哪"，Context 提供"完整的是什么"，Retrieval 把两者串起来。</strong></p>
+
+      <h3>一些更高级的用法</h3>
+      <div class="scenarios">
+        <div class="scene">
+          <div class="s-label">跨会议追踪</div>
+          <div class="s-user">"定价方案从上月到现在改了几版？每次改了什么？"</div>
+          <div class="s-agent">Agent 搜索所有录音中涉及"定价"的 Memory 条目，<strong>按时间线梳理出变化脉络</strong>——不再需要用户自己翻三四个文件。</div>
+        </div>
+        <div class="scene">
+          <div class="s-label">个性化输出</div>
+          <div class="s-user">"帮我把今天的会整理一下。"</div>
+          <div class="s-agent">Agent 读过你的 About You（产品经理）和 About Agent（侧重行动项），自动<strong>按你的偏好调整输出结构</strong>，而不是给一个通用版。</div>
+        </div>
+        <div class="scene">
+          <div class="s-label">Folder 范围限定</div>
+          <div class="s-user">在某个项目文件夹下打开 Ask，提问。</div>
+          <div class="s-agent">Agent 自动把搜索范围限定在这个文件夹内——<strong>不会被不相关的录音干扰</strong>，回答更精准。</div>
+        </div>
+        <div class="scene">
+          <div class="s-label">Artifact 回存</div>
+          <div class="s-user">"帮我把上次整理的竞品分析更新一下。"</div>
+          <div class="s-agent">上次 Agent 生成的分析报告已存回 Context。这次<strong>直接在上次的基础上更新</strong>，而不是从零开始。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 -->
+  <section id="user">
+    <h2><span class="num">07</span>用户看到什么、能做什么</h2>
+    <p class="sub">用户不需要理解架构，只需感受到"这个 AI 越来越懂我"</p>
+    <div class="pad">
+      <p>三层架构是内部实现。用户看到的是简单清晰的几个触点：</p>
+
+      <h3>① 设置 → Personalization</h3>
+      <div class="triple">
+        <div class="card">
+          <span class="tag ctx">ABOUT YOU</span>
+          <h3>个人资料 + 补充说明</h3>
+          <div class="oneline">复用 Onboarding 收集的信息（职业、行业等），加一个"补充说明"文本框，让用户自由补充 AI 该知道的事。<strong>可查看，可编辑。</strong></div>
+        </div>
+        <div class="card">
+          <span class="tag mem">ABOUT AGENT</span>
+          <h3>AI 个性化指令</h3>
+          <div class="oneline">一个单文本框，替代 3.0 的多个碎片输入（Content Focus、Custom Instruction）。用户用自然语言写"你该怎么帮我"。</div>
+        </div>
+        <div class="card" style="border-style:dashed;opacity:.85;">
+          <span class="tag mem">MEMORY <span style="font-size:10px;opacity:.7;">待定</span></span>
+          <h3>记忆管理</h3>
+          <div class="oneline">用户能看到 AI 从录音中"记住了什么"，并进行查看和管理。<strong style="color:var(--amber);">该入口是否在 MVP/Beta 中开放尚在讨论。</strong></div>
+        </div>
+      </div>
+
+      <h3>② Ask 对话——直接用，无需配置</h3>
+      <p>用户在 Ask 里正常提问，Agent 会自动调取 Context 和 Memory。不需要手动选择"从哪个录音里找"。</p>
+
+      <h3>③ 文件系统——三个维度浏览</h3>
+      <p>4.0 的文件系统让用户按<strong>"时间"、"事项/项目"、"人物"</strong>三个维度组织和浏览自己的录音与产出，也是 Agent 搜索的底层结构。</p>
+
+      <h3>④ 你的数据，你控制</h3>
+      <div class="analogy">
+        <div class="ico">🔒</div>
+        <div class="body"><b>可见可编辑</b>：About You 和 About Agent 的内容你随时能看能改。<b>私密优先</b>：所有 Context 和 Memory 默认只有你自己能看到。——这些是和竞品做差异化的关键体验点。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 -->
+  <section id="diff">
+    <h2><span class="num">08</span>和竞品有何不同</h2>
+    <p class="sub">记忆能力正在成为 AI 产品的核心战场</p>
+    <div class="pad">
+      <div class="note">📌 对外口径建议：Plaud 的 Context & Memory 和 ChatGPT 的 Memory、Notion AI 的 Knowledge 等处在<strong>同一个赛道</strong>，但 Plaud 有独家优势——我们有用户的第一手录音数据，这是别家拿不到的信息源。</div>
+
+      <table class="cmp">
+        <thead>
+          <tr><th>维度</th><th>行业通行做法</th><th>Plaud 的做法</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>记忆来源</td>
+            <td class="other">只记 AI 对话本身——你和 ChatGPT 聊了什么，它记住什么。用户不主动告诉 AI，它就不知道。</td>
+            <td>以<strong>录音和真实工作场景</strong>为第一手来源。每录一次音就自动积累记忆，不需要用户"告诉"AI。</td>
+          </tr>
+          <tr>
+            <td>记忆粒度</td>
+            <td class="other">大多只做"偏好记忆"——记住你喜欢什么格式、什么语言。本质是 key-value 配置。</td>
+            <td><strong>事实级结构化提取</strong>——10 大分类，从行动承诺到决策共识到关键数据。不是配置，是知识库。</td>
+          </tr>
+          <tr>
+            <td>记忆规模</td>
+            <td class="other">通常有明确上限（如 ChatGPT 限制几千字）。超出部分被遗忘或需手动管理。</td>
+            <td><strong>理论上无上限</strong>——录了多少就存多少，Memory 做压缩，Retrieval 做检索。不靠"删旧的"来腾空间。</td>
+          </tr>
+          <tr>
+            <td>跨会话</td>
+            <td class="other">大多数产品的记忆是单次对话级别。换个对话窗口，上下文就断了。</td>
+            <td><strong>跨会议、跨时间线</strong>——能把不同日期、不同会议里关于同一话题的讨论串在一起。</td>
+          </tr>
+          <tr>
+            <td>透明度</td>
+            <td class="other">用户通常不知道 AI"记住了什么"。记忆是黑盒。</td>
+            <td><strong>可见可编辑</strong>——About You / About Agent 让用户能直接看到和修改 AI 对自己的认知。记忆管理入口是否开放尚在讨论。</td>
+          </tr>
+          <tr>
+            <td>数据壁垒</td>
+            <td class="other">AI 记忆和平台数据弱关联。换个工具，数据从头来。</td>
+            <td>基于 Plaud 独有的<strong>录音→转写→提取→记忆</strong>全链路，用户在别处拿不到这些积累。用得越久，越难离开。</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top:18px;color:var(--ink-faint);font-size:14px;">一句话差异：<strong>别人的 AI 记住的是"你跟它聊了什么"，Plaud 记住的是"你在真实工作中发生了什么"。</strong></p>
+    </div>
+  </section>
+
+  <!-- 09 -->
+  <section id="summary">
+    <div class="summary">
+      <h2><span class="num">09</span>一句话记住</h2>
+      <p class="big">Context 存下你在 Plaud 上积累的一切，Memory 从中提炼出最有用的事实和你的个人画像，Retrieval 让 Agent 能快速调取所需。三者合一，让 Plaud 从"会转写的工具"变成"真正记住你工作的 AI 伙伴"。</p>
+      <p>用户每多录一次音，AI 就多懂他一分。这件事靠的不是某一个功能，而是 Context & Memory 作为整个产品的底层基础设施在持续运转。</p>
+      <div class="pillz">
+        <span class="pz">录音即积累</span>
+        <span class="pz">事实级提取</span>
+        <span class="pz">跨会话关联</span>
+        <span class="pz">越用越懂你</span>
+        <span class="pz">可见可控</span>
+        <span class="pz">数据护城河</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section id="gloss">
+    <h2><span class="num">10</span>名词小词典</h2>
+    <p class="sub">对外沟通时，这几个词这样解释最稳妥</p>
+    <div class="pad">
+      <div class="gloss">
+        <div class="g"><div class="gt">Context（上下文）</div><div class="gd">Agent 可调取的全部信息——你的录音、转写、摘要、文件、Agent 产出。用得越多，积累越深。</div></div>
+        <div class="g"><div class="gt">Memory（记忆）</div><div class="gd">从 Context 中提炼出的结构化事实 + 个人画像。不是缩写，是 AI 经过筛选和分类后的核心知识。</div></div>
+        <div class="g"><div class="gt">Info Extraction（信息提取）</div><div class="gd">自动从录音中提取结构化事实的技术。10 大分类覆盖行动、决策、数据等。Memory 的核心引擎。</div></div>
+        <div class="g"><div class="gt">Retrieval（检索）</div><div class="gd">Agent 获取信息的能力层。先搜 Memory 定位，再按需从 Context 拿全文。Agent 一切的"眼睛"。</div></div>
+        <div class="g"><div class="gt">About You</div><div class="gd">设置中的个人信息入口。你的职业、行业、关注点。让 AI 知道"你是谁"。可查看，可编辑。</div></div>
+        <div class="g"><div class="gt">About Agent</div><div class="gd">设置中的 AI 指令入口。你对 AI 的个性化要求。让 AI 知道"你要我怎么做"。一个文本框，自然语言。</div></div>
+        <div class="g"><div class="gt">Summary（标准化摘要）</div><div class="gd">AI 对录音内容的忠实还原。4.0 定位为"事实底座"——不花哨，但准确，给下游 Memory 和 Agent 提供数据起点。</div></div>
+        <div class="g"><div class="gt">Context OS</div><div class="gd">Context & Memory 的内部团队/系统名。包含 Storage、Memory、Retrieval 三个模块。对外不用这个名字。</div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Plaud 4.0 · Context & Memory 介绍说明 · 内部科普版 v1（2026-06）。本页面向非技术同事，描述当前产品架构口径；具体功能以最终上线版本为准。
+  </footer>
+
+</div>
+</body>
+</html>
