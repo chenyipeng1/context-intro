@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 辅助产品工作实践分享 — Aiden</title>
+<style>
+  :root{
+    --bg:#f6f7f5;
+    --paper:#ffffff;
+    --ink:#1f2933;
+    --ink-soft:#52606d;
+    --ink-faint:#7b8794;
+    --green:#0e9f6e;
+    --green-deep:#067a52;
+    --green-wash:#e7f6ef;
+    --blue:#2563d9;
+    --blue-wash:#e8eefc;
+    --amber:#b9770e;
+    --amber-wash:#fbf2e0;
+    --purple:#7c3aed;
+    --purple-wash:#f0ebff;
+    --red:#dc2626;
+    --red-wash:#fef2f2;
+    --line:#e3e6e2;
+    --radius:16px;
+    --shadow:0 1px 2px rgba(31,41,51,.05),0 8px 24px rgba(31,41,51,.06);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:0 22px 96px;}
+
+  .hero{padding:64px 0 40px;}
+  .eyebrow{display:inline-block;font-size:13px;letter-spacing:.14em;color:var(--green-deep);
+    background:var(--green-wash);padding:5px 12px;border-radius:999px;font-weight:600;margin-bottom:20px;}
+  h1{font-size:36px;line-height:1.25;margin:0 0 16px;letter-spacing:-.01em;font-weight:750;}
+  h1 .accent{color:var(--green);}
+  h1 .accent2{color:var(--purple);}
+  .lede{font-size:18px;color:var(--ink-soft);max-width:690px;margin:0;}
+  .meta{margin-top:24px;font-size:13.5px;color:var(--ink-faint);display:flex;gap:18px;flex-wrap:wrap;}
+  .meta span{display:inline-flex;align-items:center;gap:6px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+
+  nav.toc{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 22px;margin:8px 0 44px;box-shadow:var(--shadow);}
+  nav.toc .toc-title{font-size:12.5px;letter-spacing:.1em;color:var(--ink-faint);font-weight:600;margin-bottom:10px;}
+  nav.toc ol{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;counter-reset:t;}
+  nav.toc a{counter-increment:t;text-decoration:none;color:var(--ink-soft);font-size:14.5px;
+    display:flex;gap:10px;padding:5px 0;border-radius:8px;transition:color .15s;}
+  nav.toc a::before{content:counter(t,decimal-leading-zero);color:var(--green);font-weight:700;font-variant-numeric:tabular-nums;}
+  nav.toc a:hover{color:var(--green-deep);}
+
+  section{margin:0 0 56px;scroll-margin-top:24px;}
+  h2{font-size:25px;margin:0 0 6px;letter-spacing:-.01em;font-weight:720;display:flex;align-items:baseline;gap:12px;}
+  h2 .num{font-size:14px;color:var(--green);font-weight:700;font-variant-numeric:tabular-nums;flex:none;}
+  .sub{color:var(--ink-faint);font-size:14.5px;margin:0 0 22px;padding-left:30px;}
+  h3{font-size:18px;margin:30px 0 8px;font-weight:680;}
+  p{margin:0 0 16px;}
+  strong{font-weight:680;color:var(--ink);}
+  .pad{padding-left:30px;}
+  @media(max-width:640px){.pad{padding-left:0;} .sub{padding-left:0;} nav.toc ol{grid-template-columns:1fr;}}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+    padding:26px 28px;box-shadow:var(--shadow);margin-bottom:18px;}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 0;}
+  .triple{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0;}
+  @media(max-width:720px){.duo{grid-template-columns:1fr;} .triple{grid-template-columns:1fr;}}
+  .duo .card,.triple .card{margin:0;}
+  .tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;padding:4px 10px;border-radius:999px;margin-bottom:14px;}
+  .tag.ctx{background:var(--green-wash);color:var(--green-deep);}
+  .tag.mem{background:var(--purple-wash);color:var(--purple);}
+  .tag.ret{background:var(--blue-wash);color:var(--blue);}
+  .tag.warn{background:var(--red-wash);color:var(--red);}
+  .tag.amber{background:var(--amber-wash);color:var(--amber);}
+  .card h3{margin-top:0;}
+  .card .oneline{font-size:15px;color:var(--ink-soft);margin-bottom:0;}
+  .card ul{margin:14px 0 0;padding-left:18px;}
+  .card li{margin-bottom:7px;color:var(--ink-soft);font-size:14.5px;}
+  .card li strong{color:var(--ink);}
+
+  .analogy{background:linear-gradient(180deg,#fffdf7,#fbf6ea);border:1px solid #f0e4c8;
+    border-radius:14px;padding:18px 20px;margin:18px 0;display:flex;gap:14px;align-items:flex-start;}
+  .analogy .ico{flex:none;width:34px;height:34px;border-radius:9px;background:var(--amber-wash);
+    display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .analogy .body{font-size:14.5px;color:#6a5414;}
+  .analogy .body b{color:var(--amber);}
+
+  .quote{background:var(--paper);border-left:4px solid var(--green);border-radius:0 12px 12px 0;
+    padding:18px 22px;margin:18px 0;box-shadow:var(--shadow);font-size:15px;color:var(--ink-soft);}
+  .quote b{color:var(--ink);}
+
+  .flow-code{background:#1f2933;color:#e4e7eb;border-radius:12px;padding:20px 24px;
+    font-family:"SF Mono","Fira Code","Cascadia Code",monospace;font-size:13px;line-height:1.8;
+    overflow-x:auto;margin:18px 0;white-space:pre;}
+  .flow-code .hl{color:var(--green);}
+  .flow-code .dim{color:#616e7c;}
+
+  table.data{width:100%;border-collapse:separate;border-spacing:0;font-size:14px;background:var(--paper);
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin:18px 0;}
+  table.data th,table.data td{padding:13px 16px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);}
+  table.data thead th{background:#f0f2ef;font-size:12.5px;letter-spacing:.04em;color:var(--ink-soft);font-weight:700;}
+  table.data thead th.accent{color:var(--green-deep);background:var(--green-wash);}
+  table.data td:first-child{font-weight:680;color:var(--ink);}
+  table.data tbody tr:last-child td{border-bottom:none;}
+  @media(max-width:680px){
+    table.data,table.data tbody,table.data tr,table.data td{display:block;width:100%;}
+    table.data thead{display:none;}
+    table.data tr{border-bottom:1px solid var(--line);padding:8px 0;}
+    table.data td{border:none;padding:6px 16px;}
+    table.data td:first-child{padding-top:14px;font-size:15px;color:var(--green-deep);}
+  }
+
+  .kv-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0;}
+  @media(max-width:680px){.kv-row{grid-template-columns:1fr 1fr;}}
+  .kv{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:18px 16px;text-align:center;box-shadow:var(--shadow);}
+  .kv .kv-num{font-size:28px;font-weight:750;color:var(--green);line-height:1.2;}
+  .kv .kv-label{font-size:13px;color:var(--ink-faint);margin-top:4px;}
+
+  .step{display:flex;gap:16px;margin-bottom:16px;}
+  .step .n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--green);color:#fff;
+    font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:2px;}
+  .step .st-body{flex:1;}
+  .step h4{margin:2px 0 5px;font-size:16px;font-weight:680;}
+  .step p{margin:0;color:var(--ink-soft);font-size:14.5px;}
+
+  .scenarios{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0;}
+  @media(max-width:680px){.scenarios{grid-template-columns:1fr;}}
+  .scene{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow);}
+  .scene .s-label{font-size:12px;font-weight:700;color:var(--ink-faint);letter-spacing:.05em;margin-bottom:8px;}
+  .scene .s-before{font-size:14px;color:var(--ink-faint);margin-bottom:8px;padding:10px 14px;background:#f8f9f7;border-radius:10px;border-left:3px solid var(--line);}
+  .scene .s-after{font-size:14px;color:var(--ink);padding:10px 14px;background:var(--green-wash);border-radius:10px;border-left:3px solid var(--green);}
+
+  .note{background:var(--green-wash);border:1px solid #c7ead9;border-radius:12px;padding:14px 18px;
+    font-size:14.5px;color:var(--green-deep);margin:0 0 22px;}
+
+  .summary-card{background:linear-gradient(135deg,#0e9f6e,#067a52);color:#fff;border-radius:var(--radius);
+    padding:34px 32px;box-shadow:0 12px 30px rgba(6,122,82,.25);}
+  .summary-card h2{color:#fff;}
+  .summary-card h2 .num{color:#bdf0db;}
+  .summary-card p{color:#e6f7ef;margin:0 0 12px;}
+  .summary-card .big{font-size:18.5px;font-weight:600;color:#fff;margin-bottom:18px;}
+  .summary-card .pillz{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .summary-card .pz{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);
+    border-radius:999px;padding:6px 14px;font-size:13.5px;}
+
+  .skill-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;background:var(--paper);
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin:18px 0;}
+  .skill-table th,.skill-table td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);}
+  .skill-table thead th{background:#f0f2ef;font-size:11.5px;letter-spacing:.04em;color:var(--ink-soft);font-weight:700;}
+  .skill-table td:first-child{color:var(--ink-faint);font-size:12px;font-weight:600;width:80px;}
+  .skill-table td:nth-child(2){font-weight:680;font-family:"SF Mono",monospace;font-size:13px;color:var(--green-deep);}
+  .skill-table tbody tr:last-child td{border-bottom:none;}
+
+  footer{border-top:1px solid var(--line);margin-top:20px;padding-top:24px;font-size:13px;color:var(--ink-faint);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">INTERNAL SHARING · 2026.05</span>
+    <h1>AI 辅助<span class="accent">产品工作</span>实践分享</h1>
+    <p class="lede">不是工具介绍，是一个产品经理在真实工作中系统性使用 AI 的全景记录——哪些环节改造了、怎么改的、效果如何、踩了什么坑。</p>
+    <div class="meta">
+      <span><i class="dot"></i>Aiden Chen · 产品 & 设计团队</span>
+      <span><i class="dot"></i>约 15 分钟</span>
+      <span><i class="dot"></i>v1 · 2026-05</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <div class="toc-title">目录</div>
+    <ol>
+      <a href="#origin">起点：一个困惑</a>
+      <a href="#turning">转折：从 Demo 到真实场景</a>
+      <a href="#cycle">产品经理的工作循环</a>
+      <a href="#panorama">全景：各环节的改造</a>
+      <a href="#deep-research">深入：外部调研</a>
+      <a href="#code-reading">深入：让 AI 读代码</a>
+      <a href="#auto-research">深入：方案自动验证</a>
+      <a href="#prd-iteration">深入：PRD 录音驱动迭代</a>
+      <a href="#context-system">Context 管理系统</a>
+      <a href="#chat-integration">深入：飞书聊天记录集成</a>
+      <a href="#pitfalls">踩过的坑</a>
+      <a href="#takeaways">几点体会</a>
+      <a href="#tips">实用技巧</a>
+    </ol>
+  </nav>
+
+  <!-- 01 -->
+  <section id="origin">
+    <h2><span class="num">01</span>起点：一个困惑</h2>
+    <p class="sub">AI 工具很多，但总觉得没有真正用到位</p>
+    <div class="pad">
+      <p>过去一年，AI 工具层出不穷。多数产品经理都在尝试——ChatGPT 写文档、Cursor 写代码、接 API 做自动化。但始终有一个感受：<strong>没有真正用到位。</strong></p>
+      <p>以 OpenClaw 为例。上线时非常火，但排行榜上最热门的 Skill：</p>
+
+      <table class="data">
+        <thead><tr><th>排名</th><th>Skill</th><th>功能</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Document Summarizer</td><td>总结文档</td></tr>
+          <tr><td>2</td><td>Exa Search</td><td>搜索增强</td></tr>
+          <tr><td>3</td><td>Weather</td><td>查天气</td></tr>
+          <tr><td>4</td><td>Image Generator</td><td>生成图片</td></tr>
+          <tr><td>5</td><td>Translator</td><td>翻译</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>看着不兴奋。</strong>总结文档不是刚需，查天气不需要 AI。技术上都能跑通，但没人真正为输出买单。OpenClaw 很快冷了——大部分人没有真实场景。</p>
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section id="turning">
+    <h2><span class="num">02</span>转折：从 Demo 到真实场景</h2>
+    <p class="sub">用不好 AI 的原因不是工具不行，是没有给它真实的工作场景</p>
+    <div class="pad">
+      <div class="quote">
+        <b>"The best AI use cases come from real workflows, not demos."</b>
+      </div>
+
+      <div class="flow-code"><span class="dim">没有场景 →</span> 输出可有可无 <span class="dim">→</span> 不会认真调优 <span class="dim">→</span> 永远停在浅层
+<span class="hl">有场景   →</span> 输出影响工作质量 <span class="hl">→</span> 认真投入 <span class="hl">→</span> 越用越深 <span class="hl">→ 形成飞轮</span></div>
+
+      <p>现阶段最好的场景，就是<strong>自己的日常工作</strong>。沿着这个方向，开始系统性地思考：产品经理的工作流中，哪些环节可以让 AI 深度参与。</p>
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section id="cycle">
+    <h2><span class="num">03</span>产品经理的工作循环</h2>
+    <p class="sub">一个不断迭代的循环，每个环节都有 AI 介入的空间</p>
+    <div class="pad">
+      <div class="flow-code"><span class="dim">┌──────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>
+<span class="dim">│</span>       <span class="hl">需求发现</span> → <span class="hl">调研</span> → <span class="hl">方向决策</span> → <span class="hl">产品定义</span> → <span class="hl">设计</span>
+<span class="dim">│</span>           ↑                                 ↓
+<span class="dim">│</span>           │       信息同步   进度跟踪        │
+<span class="dim">│</span>           │       复盘 · 知识沉淀           │
+<span class="dim">│</span>           │                                 ↓
+<span class="dim">│</span>       <span class="hl">迭代方向</span> ← <span class="hl">效果度量</span> ← <span class="hl">上线</span> ← <span class="hl">交付</span> ← <span class="hl">验证</span> ← <span class="hl">评审对齐</span>
+<span class="dim">│</span>
+<span class="dim">└──────────────────────────────────────────────────────────────────┘</span></div>
+
+      <p>每个环节在传统模式下都有明确的依赖：调研靠研究团队，理解实现靠研发，定 eval 靠算法，出原型靠设计，验证方案靠排期。</p>
+      <p><strong>过去几个月，沿着这个循环逐一探索：哪些环节可以用 AI 实现更高程度的独立闭环。</strong></p>
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section id="panorama">
+    <h2><span class="num">04</span>全景：各环节的改造</h2>
+    <p class="sub">产品工作主线 + 横向贯穿活动</p>
+    <div class="pad">
+
+      <h3>产品工作主线</h3>
+      <table class="data">
+        <thead>
+          <tr><th>阶段</th><th>传统模式</th><th>AI 能做什么</th><th class="accent">我实际做了什么</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>需求发现</td><td>看用户反馈、等运营同步</td><td>VOC 数据自动采集，AI 分析趋势</td><td>接入 VOC 数据源，AI 分析反馈驱动产品更新</td></tr>
+          <tr><td>外部调研</td><td>PM 做表层对比</td><td>Deep Research 多 Agent 并行，达技术架构级深度</td><td>独立 repo 积累 12+ 份深度调研报告；竞品动态每日推送</td></tr>
+          <tr><td>内部调研</td><td>找研发逐个问</td><td>AI 读线上代码，理解架构</td><td>读了线上 PFS pipeline 代码，明确了可借鉴与需重新设计的部分</td></tr>
+          <tr><td>方向决策</td><td>基于经验 + 讨论</td><td>AI 综合竞品+代码+用户+数据</td><td>发现"后处理阶段系统性纠错"是市场空白，支撑了 ASR 润色2.0 方向</td></tr>
+          <tr><td>产品定义</td><td>PM 写需求，eval 找算法团队</td><td>PM 独立产出 PRD + eval 框架 + 技术架构建议</td><td>Summary 0 PRD + ASR 转写后处理 PRD</td></tr>
+          <tr><td>原型设计</td><td>PM 画线框 → 等设计师</td><td>PM 直接产出可交互原型</td><td>10+ 个 HTML 可交互原型</td></tr>
+          <tr><td>需求评审</td><td>开会 → 手动记 → 手动改</td><td>录音进知识库 → AI 对比文档 → 主动提示修改点</td><td>AI Note PRD，13 天 v0.1→v0.7</td></tr>
+          <tr><td>方案验证</td><td>PM 提想法 → 等排期</td><td>定义评测标准 → AI 自动迭代</td><td>ASR、Summary 各 2 天跑完十几轮</td></tr>
+          <tr><td>交付研发</td><td>PM 写需求 → 研发翻译</td><td>PM 直接交付 implementation-ready spec</td><td>ASR 多步 pipeline、Summary 架构建议、Memory R39 Spec</td></tr>
+          <tr><td>效果度量</td><td>看数据报表，手动分析</td><td>大规模自动化评测 + AI 分析失分分布</td><td>1000 用户 × 400 万事实的分类体系验证</td></tr>
+        </tbody>
+      </table>
+
+      <h3>横向贯穿活动</h3>
+      <table class="data">
+        <thead>
+          <tr><th>活动</th><th>传统模式</th><th>AI 能做什么</th><th class="accent">我实际做了什么</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>信息同步</td><td>手动刷 Twitter/竞品</td><td>定时采集 + 筛选 + 推送</td><td>8 条定时任务每天自动跑，信息到工位前已就绪</td></tr>
+          <tr><td>复盘</td><td>定期组会，靠人回忆</td><td>AI 基于 context 自动生成</td><td>每周战略复盘自动执行（周一全量，周三 check）</td></tr>
+          <tr><td>进度跟踪</td><td>手动更新状态/翻聊天记录</td><td>AI 读取飞书群聊 + 录音 + 文档，持续积累</td><td>随时可查询项目进度；AI 自动拉取相关群讨论作为素材</td></tr>
+          <tr><td>知识沉淀</td><td>会后手动记笔记</td><td>录音自动转写 + 群聊自动沉淀 + 结构化记忆</td><td>每晚自动提取：22:50 群聊沉淀 → 23:00 结构化记忆</td></tr>
+          <tr><td>消息回复</td><td>逐条翻群聊、逐条回复</td><td>自动扫描 @我 → 生成回复草稿 → 一键发送</td><td>reply-assist 每 5 分钟自动扫描，飞书卡片确认后发送</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section id="deep-research">
+    <h2><span class="num">05</span>深入：外部调研 — Deep Research</h2>
+    <p class="sub">多 Agent 并行 → 交叉验证 → 共识矩阵</p>
+    <div class="pad">
+      <p>独立 repo 专门做各类深度调研。Deep Research skill 持续迭代——逐步加了共识矩阵交叉验证、苏格拉底式质疑、多源对比等能力。</p>
+
+      <div class="flow-code"><span class="hl">研究课题</span> → 拆解角度 → <span class="hl">5-8 个并行 Agent</span> 各自检索 → 交叉验证 → <span class="hl">共识矩阵</span></div>
+
+      <div class="kv-row">
+        <div class="kv"><div class="kv-num">12+</div><div class="kv-label">深度调研报告</div></div>
+        <div class="kv"><div class="kv-num">18</div><div class="kv-label">Skill 总数</div></div>
+        <div class="kv"><div class="kv-num">8</div><div class="kv-label">定时任务</div></div>
+        <div class="kv"><div class="kv-num">6</div><div class="kv-label">信息渠道</div></div>
+      </div>
+
+      <p>覆盖竞品分析、技术方案、行业趋势，也跑过居家护理市场等跨领域研究。</p>
+    </div>
+  </section>
+
+  <!-- 06 -->
+  <section id="code-reading">
+    <h2><span class="num">06</span>深入：让 AI 读代码</h2>
+    <p class="sub">直接影响了 Summary 0 的产品定义</p>
+    <div class="pad">
+      <p><strong>背景</strong>：Summary 产品从模板化转向标准化，第一步是搞清楚线上版本做了什么。传统做法是找研发问，但每人只熟悉自己的模块，拼出的全貌是碎片化的。</p>
+      <p>做法：直接让 AI 读线上 knowledge_notes 的完整代码——3 步 pipeline：<code>Framework → Section Extraction（并行）→ Polish</code>。</p>
+
+      <h3>关键发现一：两个版本方向根本不同</h3>
+      <table class="data">
+        <thead><tr><th></th><th>线上 Knowledge Notes</th><th class="accent">Summary 0 方向</th></tr></thead>
+        <tbody>
+          <tr><td>本质</td><td>Prescriptive — 有"正确"结构，系统去逼近</td><td>Descriptive — 没有"正确"结构，只有"忠实"的结构</td></tr>
+          <tr><td>"好"的标准</td><td>MECE + 文学可读性</td><td>Recall 对齐 + 事实可信度</td></tr>
+          <tr><td>信息处理</td><td>按类型分类提取，再重组为叙事</td><td>按主题归类，不预设类型</td></tr>
+        </tbody>
+      </table>
+      <p>这意味着新方向不是在原有基础上"调优"，而是需要部分重新设计。</p>
+
+      <h3>关键发现二：可复用的好设计</h3>
+      <div class="duo">
+        <div class="card">
+          <span class="tag ctx">可复用</span>
+          <h3>Action Items SMART 过滤</h3>
+          <div class="oneline">Specific + Measurable + Assignable，和新定义的"三重测试"本质等价</div>
+        </div>
+        <div class="card">
+          <span class="tag ctx">可复用</span>
+          <h3>完备性检查</h3>
+          <div class="oneline">每条信息必须有归属，逻辑可沿用到新架构的"Step D 查漏"</div>
+        </div>
+      </div>
+
+      <h3>关键发现三：不该做什么</h3>
+      <p>线上版本 retrieve 行业最佳实践模板来组织结构——对"专业呈现"方向合理，但和"事实还原"方向不兼容。"Excellent Literary Readability" 作为显式顶层目标，在新方向下需要让位给事实可信度。</p>
+
+      <div class="analogy">
+        <div class="ico">💡</div>
+        <div class="body">这份分析直接改变了后续讨论的方式。不再是"我觉得应该这样改"，而是 <b>"代码现在是 A，我们要往 B 走，这些具体的点可以复用，这些需要调整"</b>。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 -->
+  <section id="auto-research">
+    <h2><span class="num">07</span>深入：方案自动验证 — Auto Research</h2>
+    <p class="sub">收获最大的探索，也是 token 消耗最多的方向</p>
+    <div class="pad">
+      <p>灵感来自两个方向：Karpathy 的 <strong>"Evals are all you need"</strong>——先定义"什么是对的"，再去优化；以及 Darwin.evals 项目，用达尔文进化论方式优化 prompt。</p>
+
+      <div class="step"><div class="n">1</div><div class="st-body"><h4>并行研究</h4><p>AI 多维度并行调研，搞清楚"好"的标准。不能一上来就让机器进化——需要先确定方向。</p></div></div>
+      <div class="step"><div class="n">2</div><div class="st-body"><h4>数据验证</h4><p>用真实生产数据验证框架。研究产出可能对，也可能是一厢情愿。</p></div></div>
+      <div class="step"><div class="n">3</div><div class="st-body"><h4>定义 Eval</h4><p>把"好"拆成可打分的维度 + 评分标准。没有 eval 就没有进化。</p></div></div>
+      <div class="step"><div class="n">4</div><div class="st-body"><h4>自动迭代</h4><p>AI 生成 → 评测 → 分析失分 → 改 prompt → 下一轮。找到天花板和真正的瓶颈。</p></div></div>
+
+      <div class="note">核心转变：工作重心从"调 prompt"变成"定义什么是好的"。后者才是产品经理的核心价值。</div>
+
+      <h3>三个方向的成果</h3>
+      <table class="data">
+        <thead><tr><th>方向</th><th>核心变化</th><th>周期</th><th class="accent">产出</th></tr></thead>
+        <tbody>
+          <tr><td>ASR 转写</td><td>4.19 → <strong>8.44</strong>（+101%）</td><td>2 天 · 12 版</td><td>多步 Pipeline + Prompt</td></tr>
+          <tr><td>Summary</td><td>65 → <strong>87</strong>（+34%）</td><td>2 天 · 17 轮</td><td>失分分析 + 架构建议</td></tr>
+          <tr><td>Memory</td><td>非结构化 Recall <strong>+82%</strong></td><td>~1 周 · 10 轮</td><td>R39 Pipeline Spec</td></tr>
+        </tbody>
+      </table>
+
+      <div class="kv-row">
+        <div class="kv"><div class="kv-num">+101%</div><div class="kv-label">ASR 综合评分</div></div>
+        <div class="kv"><div class="kv-num">+34%</div><div class="kv-label">Summary 评分</div></div>
+        <div class="kv"><div class="kv-num">+82%</div><div class="kv-label">Memory Recall</div></div>
+        <div class="kv"><div class="kv-num">~39轮</div><div class="kv-label">总迭代次数</div></div>
+      </div>
+
+      <p><strong>Summary 最有价值的发现</strong>：失分分析显示 70% 来自 AI 复述时微妙改变原意。结论：prompt 不是瓶颈，需要在 pipeline 架构层加事实验证。</p>
+    </div>
+  </section>
+
+  <!-- 08 -->
+  <section id="prd-iteration">
+    <h2><span class="num">08</span>深入：PRD 录音驱动迭代</h2>
+    <p class="sub">从触发事件到 PRD 落地的完整链路——不只是编辑文档，是把变更上下文转化为具体修改</p>
+    <div class="pad">
+      <div class="scenarios">
+        <div class="scene">
+          <div class="s-label">传统方式</div>
+          <div class="s-before">开评审会 → 手动记意见 → 手动改 → 下次评审发现上次漏改 → 关联文档忘了同步</div>
+        </div>
+        <div class="scene">
+          <div class="s-label">改造后</div>
+          <div class="s-after">触发事件 → AI 自动收集上下文 → 对比 PRD 逐条识别改动点 → 用户确认 → 精准修改 + 高亮 → 关联文档检查 → 版本管理</div>
+        </div>
+      </div>
+
+      <h3>完整的 6 步流程</h3>
+      <div class="flow-code"><span class="hl">触发事件</span>（评审会 / 群聊讨论 / 竞品发现 / 自己的想法）
+    ↓
+<span class="hl">Step 1</span>  收集变更上下文
+        录音 get_note / 群聊搜索 / 竞品文档 / 用户描述
+    ↓
+<span class="hl">Step 2</span>  读取当前 PRD
+        提取：版本号 + 文档结构 + 近 3 条 Change Log
+    ↓
+<span class="hl">Step 3</span>  识别改动点 → <span class="dim">强制对照检查</span>
+        每条候选改动必须回答：
+        ① PRD 里是否已有？ ② 是否在本 PRD scope 内？
+    ↓
+<span class="hl">Step 4</span>  用户确认 → 执行修改
+        block 级精准替换（old_str → new_str）
+        新内容加 <span class="hl">orange_bg 高亮</span>，旧高亮清除
+    ↓
+<span class="hl">Step 5</span>  关联文档检查
+        改了产品定义 → 评测标准需同步？
+        改了信息架构 → 交互文档需同步？
+    ↓
+<span class="hl">Step 6</span>  更新 Change Log</div>
+
+      <h3>关键设计：强制对照检查（Step 3）</h3>
+      <p>这一步是避免"改了又改、改重了、改错地方"的核心。对每条候选改动：</p>
+      <div class="duo">
+        <div class="card">
+          <span class="tag ctx">检查一</span>
+          <h3>PRD 里是否已有？</h3>
+          <div class="oneline">上一版可能已经写了。如果已有，标注"不需要改"并说明在哪个章节，避免重复改动。</div>
+        </div>
+        <div class="card">
+          <span class="tag ret">检查二</span>
+          <h3>是否在本 PRD 的 scope 内？</h3>
+          <div class="oneline">同一话题可能涉及多个文档——放量策略不属于功能 PRD，排期不进产品定义。不在 scope 内的标注"属于其他文档"。</div>
+        </div>
+      </div>
+
+      <h3>多种触发源自动适配</h3>
+      <table class="data">
+        <thead><tr><th>用户说</th><th class="accent">AI 怎么收集上下文</th></tr></thead>
+        <tbody>
+          <tr><td>"基于今天评审的反馈"</td><td>搜索今天的 Plaud 录音 + 相关群聊讨论</td></tr>
+          <tr><td>"基于竞品分析结论"</td><td>读取最近的竞品分析文档（memory 或 docs/）</td></tr>
+          <tr><td>"基于群里的讨论"</td><td>搜索相关群聊消息</td></tr>
+          <tr><td>"我想改 XX 部分"</td><td>用户有明确想法，直接进入对比</td></tr>
+        </tbody>
+      </table>
+
+      <h3>核心原则</h3>
+      <div class="triple">
+        <div class="card">
+          <span class="tag amber">原则</span>
+          <h3>不替用户做产品决策</h3>
+          <div class="oneline">角色是"把决策落到文档里"，不是"决定应该怎么改"。矛盾意见列出来让用户判断。</div>
+        </div>
+        <div class="card">
+          <span class="tag amber">原则</span>
+          <h3>高亮即本轮变化</h3>
+          <div class="oneline">新增/修改加 orange 高亮，上一版高亮清除。研发收到文档只看高亮部分，changelog 即历史脉络。</div>
+        </div>
+        <div class="card">
+          <span class="tag amber">原则</span>
+          <h3>关联文档不能忘</h3>
+          <div class="oneline">改了产品定义 → 评测标准的维度/权重可能需同步。改了功能范围 → Roadmap 的 DoD 可能需更新。</div>
+        </div>
+      </div>
+
+      <p>Summary 0 的 PRD 就是这样迭代的——<strong>13 天，v0.1 到 v0.7，最密集一天 4 轮</strong>。目前已沉淀为标准化 Skill，覆盖 5 个核心 PRD 文档的自动化迭代。</p>
+    </div>
+  </section>
+
+  <!-- 09 -->
+  <section id="context-system">
+    <h2><span class="num">09</span>Context 管理系统</h2>
+    <p class="sub">把所有环节串起来的关键——6 类信息渠道 × 8 条定时任务 × 18 个 Skill</p>
+    <div class="pad">
+
+      <h3>信息渠道全景</h3>
+      <p>工作上下文分布在多个渠道中，AI 根据问题性质自动判断需要触达哪些：</p>
+      <table class="data">
+        <thead><tr><th>渠道</th><th>信息特征</th><th class="accent">访问方式</th></tr></thead>
+        <tbody>
+          <tr><td>知识库</td><td>最深：录音转写、会议纪要、项目文档、架构决策。按项目分类</td><td>context/ 目录，grep 检索</td></tr>
+          <tr><td>飞书聊天</td><td>最实时：群聊讨论、临时决策、任务分配、@提及</td><td>read_feishu_chat 工具（搜索/列表/全局）</td></tr>
+          <tr><td>Daily Memory</td><td>最近：Bot 对话、Claude Code 产出、飞书消息沉淀。按天组织</td><td>memory/ 按日期，启动自动加载最近 3 天</td></tr>
+          <tr><td>Plaud 录音</td><td>最完整的会议上下文：AI 总结 + 时间戳转写 + 说话人标注</td><td>Plaud MCP / plaud-sync 自动同步</td></tr>
+          <tr><td>飞书文档</td><td>结论性：PRD、方案文档、评审记录</td><td>read_feishu_doc 工具</td></tr>
+          <tr><td>焦点图谱</td><td>当前重点关注的群和人（按 POD 组织）</td><td>config/focus-graph.yaml</td></tr>
+        </tbody>
+      </table>
+
+      <h3>自动化数据流</h3>
+      <div class="flow-code"><span class="dim">── 信息采集层 ──</span>
+<span class="hl">Plaud 录音</span>     → plaud-sync（每 5 分钟）→ 转写 + Summary → 按项目归档
+<span class="hl">飞书群聊</span>      → feishu-digest（每晚 22:50）→ 按焦点图谱扫描 → 提取决策/行动/风险
+<span class="hl">Twitter/HN</span>    → 4 条 briefing cron（08:00-09:30）→ 语义筛选 → 推送飞书
+<span class="hl">战略复盘</span>      → strategic-review（09:00）→ 矛盾论分析 → 周一全量/周三 check
+
+<span class="dim">── 知识沉淀层 ──</span>
+所有采集 → memory/{date}.md → <span class="hl">memory-extract（23:00）</span>
+                              → 提取 6 种结构化记忆
+                              → context/ 按项目/类型分类
+                              → 启动时自动加载最近 3 天</div>
+
+      <div class="analogy">
+        <div class="ico">🧠</div>
+        <div class="body"><b>直接搜索 vs 有 Context 管理，效果差距非常大。</b>搜索是"问什么找什么"；Context 管理是"AI 已经知道背景，说一句就懂"。这个体感直接影响了产品判断：仅靠 search 不够，需要加渐进式加载策略。</div>
+      </div>
+
+      <h3>8 条定时任务</h3>
+      <table class="data">
+        <thead><tr><th>时间</th><th>任务</th><th class="accent">产出</th></tr></thead>
+        <tbody>
+          <tr><td>08:00</td><td>twitter-briefing</td><td>科技 Twitter 每日简报</td></tr>
+          <tr><td>08:30</td><td>ai-briefing</td><td>AI 行业日报（Twitter + HN + ArXiv + GitHub）</td></tr>
+          <tr><td>09:00</td><td>github-trending</td><td>GitHub 热门项目简报</td></tr>
+          <tr><td>09:00</td><td>strategic-review</td><td>战略复盘（周一全量 / 周三 check）</td></tr>
+          <tr><td>09:30</td><td>product-briefing</td><td>竞品动态日报</td></tr>
+          <tr><td>每 5 分</td><td>plaud-sync</td><td>录音转写同步到本地知识库</td></tr>
+          <tr><td>22:50</td><td>feishu-digest</td><td>飞书焦点群消息沉淀（决策/行动/风险）</td></tr>
+          <tr><td>23:00</td><td>memory-extract</td><td>从当天日志提取结构化记忆（6 种类型）</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Skill 体系（18 个 Skill）</h3>
+      <table class="skill-table">
+        <thead><tr><th>类别</th><th>Skill</th><th>功能</th></tr></thead>
+        <tbody>
+          <tr><td>信息获取</td><td>twitter-briefing</td><td>每日科技消息简报，Twitter 推文语义分类</td></tr>
+          <tr><td></td><td>ai-briefing</td><td>AI 行业日报，聚合 Twitter / HN / ArXiv / GitHub</td></tr>
+          <tr><td></td><td>product-briefing</td><td>竞品动态日报</td></tr>
+          <tr><td></td><td>github-trending</td><td>GitHub 热门项目简报</td></tr>
+          <tr><td>录音处理</td><td>plaud-sync</td><td>定时轮询同步录音转写 + Summary</td></tr>
+          <tr><td></td><td>plaud-organize</td><td>交互式整理录音，按项目归档</td></tr>
+          <tr><td></td><td>plaud-label</td><td>批量录音分类标注，构建评测数据集</td></tr>
+          <tr><td>飞书集成</td><td>feishu-digest</td><td>每日焦点群消息沉淀（决策/行动/风险/讨论）</td></tr>
+          <tr><td></td><td>reply-assist</td><td>飞书消息代回：自动扫描 @我 → 草稿 → 一键发送</td></tr>
+          <tr><td>知识管理</td><td>memory-extract</td><td>每日日志中提取结构化记忆（6 种类型）</td></tr>
+          <tr><td></td><td>context-ingest</td><td>将文档/纪要归档到对应项目 context</td></tr>
+          <tr><td></td><td>knowledge-sync</td><td>知识库一致性检查与同步</td></tr>
+          <tr><td></td><td>skill-upgrade</td><td>基于用户反馈自优化 skill</td></tr>
+          <tr><td></td><td>sop-discovery</td><td>主动发现重复工作模式，建议 skill 化</td></tr>
+          <tr><td>分析决策</td><td>strategic-review</td><td>基于矛盾论框架的战略复盘</td></tr>
+          <tr><td></td><td>deep-research</td><td>多 Agent 并行深度调研</td></tr>
+          <tr><td>文档迭代</td><td>prd-iterate</td><td>录音/讨论驱动的 PRD 自动迭代（6 步流程）</td></tr>
+          <tr><td>日常工具</td><td>translator / weekly-report / general</td><td>翻译 · 周报生成 · 通用对话</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">信息自动采集 → 知识自动沉淀 → AI 上下文越来越丰富 → 产出质量提升 → 更多环节可以交给 AI</div>
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section id="chat-integration">
+    <h2><span class="num">10</span>深入：飞书聊天记录集成</h2>
+    <p class="sub">最近新增的能力——让 AI 直接读取飞书群聊和单聊消息</p>
+    <div class="pad">
+      <p>录音能捕捉会议上说了什么，但大量工作讨论发生在飞书群聊里——临时决策、任务分配、方案讨论。这些信息以前只能靠人翻聊天记录。现在 AI 可以直接读取。</p>
+
+      <h3>三种操作模式</h3>
+      <div class="triple">
+        <div class="card">
+          <span class="tag ctx">搜索群</span>
+          <h3>find_chat</h3>
+          <div class="oneline">按群名关键词搜索，获取 chat_id。比如"Extract Pod"就能找到对应的群。</div>
+        </div>
+        <div class="card">
+          <span class="tag ret">列出消息</span>
+          <h3>list</h3>
+          <div class="oneline">列出某个群/单聊的最近消息。支持时间范围和分页。</div>
+        </div>
+        <div class="card">
+          <span class="tag mem">全局搜索</span>
+          <h3>search</h3>
+          <div class="oneline">跨所有群搜索——关键词、发送者、时间范围、@我。一条命令找到散落各处的讨论。</div>
+        </div>
+      </div>
+
+      <h3>焦点图谱：关注什么群、关注什么人</h3>
+      <p>不是所有群都值得 AI 关注。<code>focus-graph.yaml</code> 按 POD 组织了当前重点：</p>
+      <div class="duo">
+        <div class="card">
+          <span class="tag ctx">AI Note POD</span>
+          <h3>核心 + 研发 + 评测</h3>
+          <div class="oneline">Extract Pod、Stand UP、Summary Demo、ASR 幻觉优化、Transcript 润色、评测沟通群……</div>
+        </div>
+        <div class="card">
+          <span class="tag mem">Context OS POD</span>
+          <h3>核心 + 研发</h3>
+          <div class="oneline">Context OS Pod、Context System Group、Memory 评测群……</div>
+        </div>
+      </div>
+
+      <h3>三条自动化链路</h3>
+      <div class="step"><div class="n">A</div><div class="st-body"><h4>feishu-digest · 每晚自动沉淀</h4><p>22:50 按焦点图谱扫描当天消息 → 过滤闲聊 → 提取 [决策] [行动] [风险] [讨论] [@我] [数据] → 写入 memory，23:00 由 memory-extract 进一步结构化。</p></div></div>
+      <div class="step"><div class="n">B</div><div class="st-body"><h4>reply-assist · 自动代回消息</h4><p>每 5 分钟扫描 @我 的新消息 → 生成上下文摘要和回复草稿 → 以飞书交互卡片推送（带发送/跳过按钮）。涉及承诺的消息不会自动发送，必须人工确认。</p></div></div>
+      <div class="step"><div class="n">C</div><div class="st-body"><h4>主动调用 · AI 自己决定什么时候读群聊</h4><p>写周报时 → 自动拉取 Pod 群一周讨论。写 PRD 时 → 搜索相关话题在群里的讨论脉络。准备 1:1 前 → 拉取对方近期消息。不需要用户说"去搜群聊"，AI 自己判断需要。</p></div></div>
+
+      <div class="analogy">
+        <div class="ico">💬</div>
+        <div class="body"><b>效果对比</b>：以前写周报靠回忆 + 翻群聊，容易漏掉非正式渠道的决策。现在 AI 自动从焦点群里搜集素材，周报覆盖率显著提升——<b>很多"群里聊了但没上会"的决策不再被遗漏</b>。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 -->
+  <section id="pitfalls">
+    <h2><span class="num">11</span>踩过的坑</h2>
+    <p class="sub">都是在探索 AI 边界的过程中踩出来的真实教训</p>
+    <div class="pad">
+      <div class="duo">
+        <div class="card">
+          <span class="tag warn">教训</span>
+          <h3>"好"的定义本身就很难</h3>
+          <div class="oneline">Memory 抽取优化——什么算"好的记忆提取"，团队到现在还在讨论。没有共识的标准，自动迭代根本跑不起来。</div>
+        </div>
+        <div class="card">
+          <span class="tag warn">教训</span>
+          <h3>上下文不完整，效果就差一截</h3>
+          <div class="oneline">系统接入了录音、文档、代码，但飞书群聊等上下文还没覆盖。很多时候不得不手动补充背景信息。</div>
+        </div>
+        <div class="card">
+          <span class="tag warn">教训</span>
+          <h3>过度信任 AI 的判断</h3>
+          <div class="oneline">AI 说得越自信，越容易让人放松警惕。有过几次 AI 对 PRD 的修改建议听起来合理，仔细看才发现误解了上下文。</div>
+        </div>
+        <div class="card">
+          <span class="tag warn">教训</span>
+          <h3>前期学习和维护成本不低</h3>
+          <div class="oneline">搭建是 30% 的工作量，维护是 70%。每个 skill 需要持续维护——上游 API 变了、prompt 效果漂移了、边界 case 没覆盖。</div>
+        </div>
+        <div class="card">
+          <span class="tag warn">教训</span>
+          <h3>AI 擅长发散，不擅长收敛</h3>
+          <div class="oneline">Deep Research 可以给你 50 页分析，但最终"所以我们该怎么做"还是得自己判断。筛选和决策的压力反而变大。</div>
+        </div>
+        <div class="card">
+          <span class="tag warn">教训</span>
+          <h3>不是所有环节都值得 AI 介入</h3>
+          <div class="oneline">有些事搭建 + 维护的时间比手动做还多，特别是低频任务。知道什么时候不该用 AI，也是一种能力。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 -->
+  <section id="takeaways">
+    <h2><span class="num">12</span>几点体会</h2>
+    <p class="sub">最重要的变化不是效率，是协作模式</p>
+    <div class="pad">
+      <div class="step"><div class="n">1</div><div class="st-body"><h4>做到以前做不到的事，比想象中容易</h4><p>读代码理解架构、跑十几轮自动实验、产出技术级竞品分析——以前要么做不了，要么需要跨团队协作几周。现在一个 PM + AI，几天就能完成。</p></div></div>
+      <div class="step"><div class="n">2</div><div class="st-body"><h4>Context 比 Prompt 重要</h4><p>Prompt 决定一次对话的质量，Context 决定 AI 对工作的理解深度。后者回报高一个数量级。与其用文字描述问题，不如直接给 AI 真实素材。</p></div></div>
+      <div class="step"><div class="n">3</div><div class="st-body"><h4>变化最大的不是效率，是协作模式</h4><p>以前：PM 提需求 → 等排期 → 几周一个循环。现在：PM 自己定义 eval、跑实验、定位瓶颈，带着量化结论和可交付 spec 找研发。</p></div></div>
+      <div class="step"><div class="n">4</div><div class="st-body"><h4>系统比单次对话重要</h4><p>没有什么 prompt 黑科技。真正有效的是把工具和流程串成一个持续运转的系统——session 管理、memory 积累、context 自动加载。串起来后产生复利。</p></div></div>
+      <div class="step"><div class="n">5</div><div class="st-body"><h4>使用 AI 的三个阶段</h4><p>① 不知道怎么用 → ② 刻意思考"这件事能不能用 AI" → ③ 更自然地使用 AI。从 1 到 2 需要主动意识，从 2 到 3 需要足够多的真实使用积累。</p></div></div>
+    </div>
+  </section>
+
+  <!-- 13 -->
+  <section id="tips">
+    <div class="summary-card">
+      <h2><span class="num">13</span>实用技巧</h2>
+      <p class="big">三个可以今天就开始做的事</p>
+
+      <div style="margin-top:18px;">
+        <p><strong style="color:#fff;">连 MCP，让 AI 直接访问工作素材</strong><br>
+        与其复制粘贴内容给 AI，不如让它直接连接数据源。体验差距非常明显——AI 从"你告诉它什么它才知道"变成"它自己能看到"。</p>
+
+        <p><strong style="color:#fff;">让 AI 帮你规范化重复操作</strong><br>
+        如果一件事做过 3 次以上，就值得让 AI 帮你沉淀成 Skill SOP——定义清楚输入格式、处理步骤、输出规范。</p>
+
+        <p><strong style="color:#fff;">选一个对自己重要的 Skill，尝试自己优化它</strong><br>
+        选一个对你最重要的（竞品调研、会议纪要、周报...），花时间定义"好的输出长什么样"，然后让 AI 按标准自评和改进。一旦有了标准，迭代速度会快很多。</p>
+      </div>
+
+      <div class="pillz">
+        <span class="pz">连接 MCP</span>
+        <span class="pz">沉淀 SOP</span>
+        <span class="pz">定义"好"的标准</span>
+        <span class="pz">让 AI 自我迭代</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Aiden Chen · 产品 & 设计团队内部分享 · 2026.05<br>
+    核心不在工具，在于能不能把"好"定义清楚。能定义，AI 就能自己迭代。
+  </footer>
+
+</div>
+</body>
+</html>
